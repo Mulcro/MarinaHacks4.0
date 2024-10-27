@@ -3,6 +3,7 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import Main from './Components/main';
 import Session from './Components/session';
+import Navbar from './Components/navbar';
 import './App.css'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from 'react';
@@ -14,6 +15,7 @@ function App() {
     <BrowserRouter>
       <div>
         {/* Navbar */}
+        <Navbar/>
         <Routes>
           <Route path='/' element={<Main/>}/>
           <Route path='/session' element={<Session/>}/>
