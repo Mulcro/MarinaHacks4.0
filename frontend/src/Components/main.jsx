@@ -11,6 +11,7 @@ const Main = () => {
                 <div className="flex flex-col">
                     <label className="" for="Subject">Choose subject:</label>
                     <select className="w-80 -ms-42" name="subject" id="subject">
+                        <option className="w-80 -ms-42" value=""></option>
                         <option className="w-80 -ms-42" value="Math">Math</option>
                         <option className="w-80 -ms-42" value="Biology">Biology</option>
                         <option className="w-80 -ms-42" value="Computer Science">Computer Science</option>
@@ -20,6 +21,7 @@ const Main = () => {
                 <div className="flex flex-col">
                     <label className="">Select Class:</label>
                     <select className="w-80 -ms-42" name="subject" id="subject">
+                        <option className="w-80 -ms-42" value=""></option>
                         <option className="w-80 -ms-42" value="121">121</option>
                         <option className="w-80 -ms-42" value="274">274</option>
                         <option className="w-30 -ms-42" value="341">341</option>
