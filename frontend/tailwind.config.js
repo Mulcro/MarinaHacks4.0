@@ -7,10 +7,10 @@ export default {
     theme: {
     extend: {
 
-      // fontFamily: {
+      fontFamily: {
 
-      //   'silkscreen': ['Silkscreen', 'serif'],
-      // }
+      'silkscreen': ['Silkscreen', 'serif'],
+      }
     },
   },
   plugins: [],
