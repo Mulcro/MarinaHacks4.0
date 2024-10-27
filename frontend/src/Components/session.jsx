@@ -131,7 +131,7 @@ const Sessions = () => {
 
                     <h4 className="absolute top-[-10%] left-[5%]">My Partner</h4>
 
-                    <video className="h-[22rem] border border-solid border-white border-[0.8rem] rounded-[1rem]" ref={userVideoRef} autoPlay  />
+                    <video className="h-[22rem] border border-solid border-white border-[0.8rem] rounded-[1rem]" ref={partnerVideoRef} autoPlay  />
 
                     <div className='absolute h-[3rem] w-[60%] rounded-xl bg-white/70 flex flex-row justify-around bottom-10 py-2'> 
                         <img src="/public/5904483.png" alt="" />
@@ -144,6 +144,9 @@ const Sessions = () => {
 
             <div className='flex flex-row gap-10 mt-10'>
                 <button className="p-3 bg-green-200 rounded-xl border border-solid border-2  border-black hover:bg-green-300"  onClick={joinRoom}>Join Room</button>
+
+                <button className='p-3 bg-blue-200 rounded-xl border border-solid border-2 border-black hover:bg-blue-300' onClick={() => window.location.reload()}>Refresh</button>
+
                 <button className="p-3 bg-red-400 rounded-xl border border-solid border-2 border-black hover:bg-red-500" onClick={disconnect}>Disconnect</button>
             </div>
         </div>
