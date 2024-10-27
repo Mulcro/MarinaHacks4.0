@@ -13,7 +13,7 @@ const Sessions = () => {
 
     useEffect(() => {
         // Initialize socket connection
-        socketRef.current = io("http://localhost:5000");
+        socketRef.current = io("https://marinahacks4-ea6bf582f724.herokuapp.com/");
 
         // Initialize Peer connection
         peerRef.current = new Peer();
