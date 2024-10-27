@@ -18,7 +18,7 @@ const peerServer = ExpressPeerServer(server, {
 });
 
 var corsOptions = {
-    origin: 'http://127.0.0.1:5173', // Remove trailing slash
+    origin:'*', // Remove trailing slash
     optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 
