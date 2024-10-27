@@ -1,173 +1,153 @@
-import { useState, useEffect, useRef } from "react";
-import { io } from "socket.io-client";
+import React, { useEffect, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
+import Peer from 'peerjs';
 
-const Session = () => {
-    const [socket, setSocket] = useState(null);
-    const [displayName, setDisplayName] = useState("mulero");
-    const [audio, setAudio] = useState(true);
-    const [video, setVideo] = useState(true);
-    const localStream = useRef(null);
-    const localVideoRef = useRef(null); // Ref for the local video element
-    const peerConnections = useRef({});
+const Sessions = () => {
+    const [userId, setUserId] = useState(null);
+    const [roomId, setRoomId] = useState(10);
+    const socketRef = useRef(null);
+    const peerRef = useRef(null);
+    const userVideoRef = useRef(null);
+    const partnerVideoRef = useRef(null);
+    const [localStream, setLocalStream] = useState(null);
 
     useEffect(() => {
         // Initialize socket connection
-        const newSocket = io("http://localhost:5000");
-        setSocket(newSocket);
+        socketRef.current = io("http://localhost:5000");
+
+        // Initialize Peer connection
+        peerRef.current = new Peer();
+
+        // Listen for Peer connection
+        peerRef.current.on('open', id => {
+            setUserId(id); // Set userId when Peer connection opens
+        });
+
+        // Listen for socket connection
+        socketRef.current.on('connect', () => {
+            console.log("Connected to socket server");
+            if (userId) {
+                joinRoom(); // Re-join room when socket connects
+            }
+        });
+
+        // Listen for incoming calls
+        peerRef.current.on('call', call => {
+            console.log("Incoming call detected");
+            if (localStream) {
+                call.answer(localStream);
+                call.on('stream', stream => {
+                    if (partnerVideoRef.current) {
+                        partnerVideoRef.current.srcObject = stream;
+                    }
+                });
+            }
+        });
 
         // Clean up on component unmount
         return () => {
-            newSocket.disconnect();
-            if (localStream.current) {
-                localStream.current.getTracks().forEach((track) => track.stop());
-            }
+            disconnect();
         };
     }, []);
 
     useEffect(() => {
-        if (socket) {
-            console.log("Socket connected:", socket.id);
-
-            // Log user list reception
-            socket.on("user-list", (data) => {
-                console.log("User list received:", data);
-            });
-
-            // Log new user joins
-            socket.on("user-connect", async (user) => {
-                console.log("New user joined:", user);
-                // Create a peer connection for the new user and send existing tracks
-                await createPeerConnection(user.sid, false);
-            });
-
-            // Log user disconnections
-            socket.on("user-disconnect", (data) => {
-                console.log("User disconnected:", data);
-                if (peerConnections.current[data.sid]) {
-                    peerConnections.current[data.sid].close();
-                    delete peerConnections.current[data.sid];
-                }
-            });
-
-            // Log any signaling data received
-            socket.on("data", handleSignalData);
+        if (userId) {
+            joinRoom(); // Call joinRoom when userId is set
         }
-    }, [socket]);
+    }, [userId]);
 
-    const joinSession = async () => {
+    const joinRoom = async () => {
         try {
-            // Capture local video/audio
-            localStream.current = await navigator.mediaDevices.getUserMedia({ video, audio });
-            console.log("Local stream:", localStream.current);
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            setLocalStream(stream);
 
-            // Attach local stream to a video element
-            if (localVideoRef.current) {
-                localVideoRef.current.srcObject = localStream.current;
+            if (userVideoRef.current) {
+                userVideoRef.current.srcObject = stream; // Display local stream
             }
 
-            const response = await fetch("http://127.0.0.1:5000/join", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    display_name: displayName,
-                    audio: audio ? 1 : 0,
-                    video: video ? 1 : 0,
-                }),
-            });
-
-            const roomData = await response.json();
-            console.log("Joined room:", roomData);
-
-            // Notify all existing users to create peer connections for this new user
-            socket.emit("user-list", { room_id: roomData.room_id });
-        } catch (error) {
-            console.error("Error capturing media:", error);
+            if (roomId) {
+                socketRef.current.emit('join-room', roomId, userId);
+                console.log(`User ${userId} joined room ${roomId}`);
+            }
+        } catch (err) {
+            console.error('Error accessing media devices.', err);
         }
     };
 
-    const handleSignalData = async (data) => {
-        const { sender_id, target_id, type, payload } = data;
-        console.log("Received signaling data:", data);
-
-        if (type === "offer") {
-            console.log("Received offer from:", sender_id);
-            await createPeerConnection(sender_id);
-            const peerConnection = peerConnections.current[sender_id];
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(payload));
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            console.log("Sending answer to:", sender_id);
-            socket.emit("data", {
-                sender_id: socket.id,
-                target_id: sender_id,
-                type: "answer",
-                payload: answer,
-            });
-        } else if (type === "answer") {
-            console.log("Received answer from:", target_id);
-            const peerConnection = peerConnections.current[target_id];
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(payload));
-        } else if (type === "new-ice-candidate") {
-            console.log("Received ICE candidate from:", sender_id);
-            const candidate = new RTCIceCandidate(payload);
-            peerConnections.current[target_id].addIceCandidate(candidate);
+    const disconnect = () => {
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop()); // Stop local tracks
         }
+        socketRef.current.disconnect(); // Disconnect from socket
+        peerRef.current.destroy(); // Destroy Peer connection
+        console.log("Disconnected from the session.");
     };
 
-    const createPeerConnection = async (peerId, initiator = false) => {
-        console.log(`Creating peer connection for peerId: ${peerId}, initiator: ${initiator}`);
-        const peerConnection = new RTCPeerConnection();
-
-        peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                console.log("Sending ICE candidate:", event.candidate);
-                socket.emit("data", {
-                    sender_id: socket.id,
-                    target_id: peerId,
-                    type: "new-ice-candidate",
-                    payload: event.candidate,
+    useEffect(() => {
+        socketRef.current.on('user-connected', (userId) => {
+            console.log("User connected:", userId);
+            if (localStream) {
+                const call = peerRef.current.call(userId, localStream);
+                call.on('stream', stream => {
+                    if (partnerVideoRef.current) {
+                        partnerVideoRef.current.srcObject = stream; // Show the remote video stream
+                    }
                 });
             }
-        };
+        });
 
-        peerConnection.ontrack = (event) => {
-            console.log("Received remote stream:", event.streams[0]);
-            const remoteVideo = document.createElement("video");
-            remoteVideo.srcObject = event.streams[0];
-            remoteVideo.autoplay = true;
-            remoteVideo.id = `video-${peerId}`;
-            document.body.appendChild(remoteVideo);
-        };
-
-        if (localStream.current) {
-            localStream.current.getTracks().forEach((track) => {
-                peerConnection.addTrack(track, localStream.current);
-            });
-        }
-
-        if (initiator) {
-            const offer = await peerConnection.createOffer();
-            console.log("Sending offer:", offer);
-            await peerConnection.setLocalDescription(offer);
-            socket.emit("data", {
-                sender_id: socket.id,
-                target_id: peerId,
-                type: "offer",
-                payload: offer,
-            });
-        }
-
-        peerConnections.current[peerId] = peerConnection;
-    };
+        socketRef.current.on('user-disconnected', (userId) => {
+            console.log("User disconnected:", userId);
+            // Handle user disconnection (e.g., stop showing their video)
+        });
+    }, [localStream]);
 
     return (
-        <div>
-            <button className="m-10 border rounded-xl bg-pink-200 p-2" onClick={joinSession}>
-                Join Session
-            </button>
-            <video ref={localVideoRef} autoPlay muted style={{ width: "300px", height: "200px" }} />
+        <div className=" font-silkscreen lg:h-[92vh] bg-[#C6E7C6] sm:h-full flex flex-col items-center">
+            
+            <div className='relative flex justify-center w-screen'>
+                <div className='absolute left-0 top-[55%] h-2 lg:w-[22rem] sm:w-[2rem] bg-gradient-to-l from-black to-[#F2CFF2]'/>
+                <h1 className='text-[50px] leading-[98px] mt-2' >Let's get to <span className='underline text-transparent bg-clip-text bg-gradient-to-t from-[#F2CFF2] from-20% to-black via-40%'>Yapping!</span></h1>
+                <div className='absolute right-0 top-[55%] h-2 lg:w-[22rem] sm:w-[2rem] bg-gradient-to-r from-black to-[#F2CFF2]'/>
+            </div>
+
+            <h4 className='text-[20px] underline'>You got connected !!</h4>
+
+            <div className='flex w-[80%] flex-row flex-wrap gap-10 items-center justify-around mt-[4rem]'>
+
+                <div className='relative flex justify-center shadow-xl'>
+                    <h4 className="absolute top-[-10%] left-[5%]">My Camera</h4>
+                    
+                    <video className="h-[22rem] border border-solid border-neutral-200 border-[1rem] rounded-[1rem] shadow-md" ref={userVideoRef} autoPlay muted/>
+
+                    <div className='absolute h-[3rem] w-[60%] rounded-xl bg-white/70 flex flex-row justify-around bottom-10 py-2'> 
+                        <img src="/public/5904483.png" alt="" />
+                        <img src="/public/4087422.png" alt="" />
+                    </div>
+
+                </div>
+
+                <div className='relative flex justify-center shadow-xl'>
+
+                    <h4 className="absolute top-[-10%] left-[5%]">My Partner</h4>
+
+                    <video className="h-[22rem] border border-solid border-white border-[0.8rem] rounded-[1rem]" ref={userVideoRef} autoPlay  />
+
+                    <div className='absolute h-[3rem] w-[60%] rounded-xl bg-white/70 flex flex-row justify-around bottom-10 py-2'> 
+                        <img src="/public/5904483.png" alt="" />
+                        <img src="/public/4087422.png" alt="" />
+                    </div>
+
+                </div>
+                
+            </div>
+
+            <div className='flex flex-row gap-10 mt-10'>
+                <button className="p-3 bg-green-200 rounded-xl border border-solid border-2  border-black hover:bg-green-300"  onClick={joinRoom}>Join Room</button>
+                <button className="p-3 bg-red-400 rounded-xl border border-solid border-2 border-black hover:bg-red-500" onClick={disconnect}>Disconnect</button>
+            </div>
         </div>
     );
 };
 
-export default Session;
+export default Sessions;
