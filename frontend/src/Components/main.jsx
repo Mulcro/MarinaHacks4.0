@@ -1,3 +1,4 @@
+import {Link} from 'react-router-dom';
 const Main = () => {
     
     return ( 
@@ -6,7 +7,7 @@ const Main = () => {
             <img className = "object-fill h-45 w-60 mt-20 mb-10" src="/public/compt.gif" alt="" />
             <h1 className="mb-10">Welcome !!</h1>
 
-            <form className="text-left flex flex-col gap-5" action="">
+            <form className="text-left flex flex-col gap-5" action="none">
 
                 <div className="flex flex-col">
                     <label className="" for="Subject">Choose subject:</label>
@@ -26,9 +27,11 @@ const Main = () => {
                     </select>
                 </div>
 
-                <button className = "w-30 bg-[#DAB1DA] hover:bg-[#CA8ECA] text-white font-bold py-2 px-4 border-b-4 border-[#CA8ECA] hover:border-[#CA8ECA] rounded">
-                Connect 
-                </button>
+                <Link to='/session'>
+                    <button className = "w-full bg-[#DAB1DA] hover:bg-[#CA8ECA] text-white font-bold py-2 px-4 border-b-4 border-[#CA8ECA] hover:border-[#CA8ECA] rounded">
+                    Connect 
+                    </button>
+                </Link>
             </form>
 
         </div>
