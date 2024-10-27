@@ -2,7 +2,7 @@ const Main = () => {
     
     return ( 
 
-        <div className="font-silkscreen bg-[#C6E7C6] h-screen flex flex-col items-center">
+        <div className="font-silkscreen bg-[#C6E7C6] h-[92vh] flex flex-col items-center">
             <img className = "object-fill h-45 w-60 mt-20 mb-10" src="/public/compt.gif" alt="" />
             <h1 className="mb-10">Welcome !!</h1>
 
